@@ -22,14 +22,7 @@ public class BodyToArrayPlugin implements ShenyuPlugin {
                     }
                     String body = dataBuffers.get(0).toString(java.nio.charset.StandardCharsets.UTF_8);
                     try {
-                        Object parsed = JsonUtils.jsonToObject(body, Object.class);
-                        List<Object> array = new ArrayList<>();
-                        if (parsed instanceof List) {
-                            array.addAll((List<?>) parsed);
-                        } else {
-                            array.add(parsed);
-                        }
-                        String newBody = JsonUtils.toJson(array);
+                        String newBody = convertBodyToArray(body);
                         ServerWebExchange mutatedExchange = exchange.mutate()
                                 .request(exchange.getRequest().mutate()
                                         .header("Content-Type", "application/json")
@@ -41,6 +34,19 @@ public class BodyToArrayPlugin implements ShenyuPlugin {
                         return chain.execute(exchange);
                     }
                 });
+    }
+
+    private String convertBodyToArray(String body) {
+        Object parsed = JsonUtils.jsonToObject(body, Object.class);
+        List<Object> array = new ArrayList<>();
+        
+        if (parsed instanceof List) {
+            array.addAll((List<?>) parsed);
+        } else {
+            array.add(parsed);
+        }
+        
+        return JsonUtils.toJson(array);
     }
 
     @Override
