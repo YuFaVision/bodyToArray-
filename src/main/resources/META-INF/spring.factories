@@ -1,2 +1,5 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
 org.apache.shenyu.plugin.body.to.array.BodyToArrayPluginConfiguration
+
+org.apache.shenyu.plugin.base.handler.PluginDataHandler=\
+org.apache.shenyu.plugin.body.to.array.BodyToArrayPluginDataHandler

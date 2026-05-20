@@ -1,13 +1,22 @@
 # Apache ShenYu Body to Array Plugin
 
-这是一个 Apache ShenYu 网关的自定义插件，用于将请求体转换为数组格式。
+这是一个 Apache ShenYu 网关的自定义插件，用于将请求体转换为数组格式 `[{}]`。
 
 ## 功能特性
 
-- 自动将单个 JSON 对象转换为数组
+- 自动将单个 JSON 对象转换为数组 `[{}]`
 - 保持原数组格式不变
 - 可通过配置文件开关控制插件启用/禁用
 - 兼容 Spring Boot 2.7+ 和 ShenYu 2.6+
+
+## 转换逻辑
+
+| 原始请求体 | 转换后 |
+|-----------|--------|
+| `{"name": "test"}` | `[{"name": "test"}]` |
+| `[1, 2, 3]` | `[1, 2, 3]` |
+| `"hello"` | `["hello"]` |
+| `{"data": {"id": 1}}` | `[{"data": {"id": 1}}]` |
 
 ## 项目结构
 
@@ -26,7 +35,9 @@
     │   │                       └── to
     │   │                           └── array
     │   │                               ├── BodyToArrayPlugin.java
-    │   │                               └── BodyToArrayPluginConfiguration.java
+    │   │                               ├── BodyToArrayPluginConfiguration.java
+    │   │                               ├── BodyToArrayPluginData.java
+    │   │                               └── BodyToArrayPluginDataHandler.java
     │   └── resources
     │       └── META-INF
     │           └── spring.factories
@@ -47,7 +58,7 @@
 ### 使用 Maven 构建
 
 ```bash
-mvn clean package
+mvn clean package -DskipTests
 ```
 
 构建成功后，JAR 文件将位于 `target/shenyu-plugin-body-to-array-1.0.0.jar`
@@ -104,11 +115,53 @@ shenyu:
 1. 在 `bodyToArray` 插件下创建选择器
 2. 配置目标接口路径（如：`/data-out/lichangrongxj/aqfxfxdy`）
 
-### 3. 配置规则
+**选择器配置示例：**
+
+| 字段 | 值 |
+|------|-----|
+| 选择器名称 | `bodyToArray-selector` |
+| 匹配方式 | 路径匹配 |
+| 匹配路径 | `/data-out/lichangrongxj/aqfxfxdy` |
+| 优先级 | 1 |
+
+### 3. 配置规则（重要！）
 
 1. 在选择器下创建具体规则
 2. 设置生效的请求路径等匹配条件
 3. 启用插件
+
+**规则配置说明：**
+
+| 字段 | 说明 |
+|------|------|
+| 规则名称 | `bodyToArray-rule` |
+| 匹配路径 | 更精确的路径匹配（可选） |
+| 是否启用 | 是 |
+| 处理 | （无需填写额外处理，插件会自动处理） |
+
+**这个插件的规则不需要填写特殊的处理配置！** 只要规则匹配成功，插件就会自动执行以下转换：
+
+- 如果请求体是单个对象 → 转换为 `[{}]` 数组
+- 如果请求体已经是数组 → 保持原样
+
+## 处理逻辑代码
+
+插件的核心处理逻辑在 [BodyToArrayPlugin.java](src/main/java/org/apache/shenyu/plugin/body/to/array/BodyToArrayPlugin.java) 中：
+
+```java
+private String convertBodyToArray(String body) {
+    Object parsed = JsonUtils.jsonToObject(body, Object.class);
+    List<Object> array = new ArrayList<>();
+    
+    if (parsed instanceof List) {
+        array.addAll((List<?>) parsed);
+    } else {
+        array.add(parsed);
+    }
+    
+    return JsonUtils.toJson(array);
+}
+```
 
 ## 技术栈
 
