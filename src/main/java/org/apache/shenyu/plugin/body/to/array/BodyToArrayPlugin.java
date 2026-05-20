@@ -1,11 +1,10 @@
 package org.apache.shenyu.plugin.body.to.array;
 
-import org.apache.shenyu.common.constant.Constants;
 import org.apache.shenyu.common.enums.PluginEnum;
 import org.apache.shenyu.common.utils.JsonUtils;
 import org.apache.shenyu.plugin.api.ShenyuPlugin;
 import org.apache.shenyu.plugin.api.ShenyuPluginChain;
-import org.apache.shenyu.plugin.api.context.ShenyuContext;
+import org.springframework.http.MediaType;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
@@ -34,7 +33,7 @@ public class BodyToArrayPlugin implements ShenyuPlugin {
                         String newBody = JsonUtils.toJson(array);
                         ServerWebExchange mutatedExchange = exchange.mutate()
                                 .request(exchange.getRequest().mutate()
-                                        .header(Constants.CONTENT_TYPE, "application/json")
+                                        .header(MediaType.APPLICATION_JSON_VALUE, "application/json")
                                         .build())
                                 .build();
                         mutatedExchange.getAttributes().put("modifiedBody", newBody);
