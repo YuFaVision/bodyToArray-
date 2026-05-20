@@ -15,4 +15,9 @@ public class BodyToArrayPluginDataHandler implements PluginDataHandler {
     @Override
     public void removePlugin(final PluginData pluginData) {
     }
+
+    @Override
+    public String pluginNamed() {
+        return "bodyToArray";
+    }
 }
