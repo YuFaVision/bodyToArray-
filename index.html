@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>风险点告知卡智能生成系统</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/xlsx-populate@1.21.0/browser/xlsx-populate.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { 
+            text-align: center; 
+            color: #fff; 
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+        .header h1 { font-size: 28px; font-weight: 600; margin-bottom: 8px; }
+        .header p { font-size: 14px; color: rgba(255,255,255,0.7); }
+        
+        .main-content { display: grid; grid-template-columns: 380px 1fr; gap: 24px; }
+        
+        .control-panel {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            position: sticky;
+            top: 20px;
+            height: fit-content;
+        }
+        
+        .card-preview {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        
+        .form-group { margin-bottom: 20px; }
+        .form-group label { 
+            display: block; 
+            font-weight: 600; 
+            margin-bottom: 8px; 
+            color: #2c3e50;
+            font-size: 14px;
+        }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid #e0e6ed;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            transition: all 0.3s;
+            background: #fafbfc;
+        }
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+        }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37,99,235,0.4);
+        }
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #334155;
+        }
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+        
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        
+        .logo-upload {
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fafbfc;
+        }
+        .logo-upload:hover { border-color: #2563eb; background: rgba(37,99,235,0.05); }
+        .logo-upload input { display: none; }
+        .logo-upload i { font-size: 32px; color: #94a3b8; margin-bottom: 8px; }
+        
+        .size-selector {
+            display: flex;
+            gap: 10px;
+        }
+        .size-option {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #e0e6ed;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+        .size-option:hover { border-color: #2563eb; }
+        .size-option.active { 
+            border-color: #2563eb; 
+            background: rgba(37,99,235,0.1);
+            color: #2563eb;
+        }
+        
+        .card-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .risk-card {
+            background: linear-gradient(180deg, #1e3a5f 0%, #0d2137 100%);
+            color: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid rgba(255,255,255,0.15);
+        }
+        
+        .logo-area {
+            width: 80px;
+            height: 60px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: rgba(255,255,255,0.6);
+        }
+        
+        .logo-area img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        
+        .card-title {
+            flex: 1;
+            text-align: center;
+            margin-right: 80px;
+        }
+        
+        .card-title h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            letter-spacing: 2px;
+        }
+        
+        .card-title p {
+            font-size: 13px;
+            color: rgba(255,255,255,0.7);
+        }
+        
+        .safety-icons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .icon-item {
+            text-align: center;
+            width: 80px;
+        }
+        
+        .icon-box {
+            width: 70px;
+            height: 70px;
+            background: #fff;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+            padding: 8px;
+        }
+        
+        .icon-box svg { width: 100%; height: 100%; }
+        
+        .icon-label {
+            font-size: 11px;
+            color: rgba(255,255,255,0.8);
+            word-break: break-all;
+        }
+        
+        .section {
+            margin-bottom: 16px;
+        }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #60a5fa;
+            margin-bottom: 8px;
+            padding-left: 12px;
+            border-left: 3px solid #60a5fa;
+        }
+        
+        .section-content {
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: rgba(255,255,255,0.9);
+        }
+        
+        .four-dimensions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        
+        .dimension-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 12px;
+            border-top: 3px solid;
+        }
+        
+        .dimension-card:nth-child(1) { border-top-color: #f59e0b; }
+        .dimension-card:nth-child(2) { border-top-color: #10b981; }
+        .dimension-card:nth-child(3) { border-top-color: #8b5cf6; }
+        .dimension-card:nth-child(4) { border-top-color: #ef4444; }
+        
+        .dimension-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 6px;
+        }
+        
+        .dimension-content {
+            font-size: 12px;
+            line-height: 1.5;
+            color: rgba(255,255,255,0.9);
+        }
+        
+        .card-footer {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 2px solid rgba(255,255,255,0.15);
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: rgba(255,255,255,0.6);
+        }
+        
+        .loading::after {
+            content: '';
+            display: block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.2);
+            border-top-color: #2563eb;
+            border-radius: 50%;
+            margin: 20px auto;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+        }
+        
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛠️ 风险点告知卡智能生成系统</h1>
+            <p>AI驱动的专业EHS风险评估工具 · 一键生成合规风险告知卡</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="control-panel">
+                <div class="form-group">
+                    <label>岗位名称 <span style="color:#ef4444;">*</span></label>
+                    <input type="text" id="jobName" placeholder="如：有限空间作业、高处作业、动火作业..." value="有限空间作业">
+                </div>
+                
+                <div class="form-group">
+                    <label>企业Logo（可选）</label>
+                    <div class="logo-upload" id="logoUpload">
+                        <input type="file" id="logoFile" accept="image/*">
+                        <i>🖼️</i>
+                        <div>点击上传Logo</div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>导出尺寸</label>
+                    <div class="size-selector">
+                        <div class="size-option active" data-size="A4">A4</div>
+                        <div class="size-option" data-size="A3">A3</div>
+                        <div class="size-option" data-size="A2">A2</div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-primary" id="generateBtn">
+                    🤖 AI智能评估生成
+                </button>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" id="exportPngBtn">
+                        📷 导出PNG
+                    </button>
+                    <button class="btn btn-secondary" id="exportPptBtn">
+                        📊 导出PPTX
+                    </button>
+                </div>
+                
+                <div class="form-group" style="margin-top:24px;border-top:1px solid #e0e6ed;padding-top:20px;">
+                    <label>手动编辑内容（如需调整）</label>
+                    <textarea id="manualContent" placeholder="在此输入自定义的风险评估内容，系统将按四维措施自动拆分..."></textarea>
+                </div>
+            </div>
+            
+            <div class="card-preview">
+                <div class="card-container" id="cardContainer">
+                    <div class="risk-card" id="riskCard">
+                        <div class="card-header">
+                            <div class="logo-area" id="logoArea">企业Logo</div>
+                            <div class="card-title">
+                                <h2>风险点告知卡</h2>
+                                <p>RISK INFORM CARD</p>
+                            </div>
+                        </div>
+                        
+                        <div class="safety-icons" id="safetyIcons">
+                            <div class="icon-item">
+                                <div class="icon-box"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#fff"/><path d="M50 15L50 50L75 75" stroke="#ef4444" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                                <div class="icon-label">警告标志</div>
+                            </div>
+                            <div class="icon-item">
+                                <div class="icon-box"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#ef4444"/><path d="M35 35L65 65M65 35L35 65" stroke="#fff" stroke-width="8" stroke-linecap="round"/></svg></div>
+                                <div class="icon-label">禁止标志</div>
+                            </div>
+                            <div class="icon-item">
+                                <div class="icon-box"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#10b981"/><path d="M35 50L45 60L70 35" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                                <div class="icon-label">指令标志</div>
+                            </div>
+                        </div>
+                        
+                        <div class="section">
+                            <div class="section-title">⚠️ 风险描述</div>
+                            <div class="section-content" id="riskDescription">
+                                请点击"AI智能评估生成"按钮，系统将自动生成专业的风险评估内容。
+                            </div>
+                        </div>
+                        
+                        <div class="section">
+                            <div class="section-title">🎯 风险等级</div>
+                            <div class="section-content" id="riskLevel">
+                                待评估
+                            </div>
+                        </div>
+                        
+                        <div class="four-dimensions">
+                            <div class="dimension-card">
+                                <div class="dimension-title">🏗️ 工程措施</div>
+                                <div class="dimension-content" id="engineering">
+                                    待生成
+                                </div>
+                            </div>
+                            <div class="dimension-card">
+                                <div class="dimension-title">📋 管理措施</div>
+                                <div class="dimension-content" id="management">
+                                    待生成
+                                </div>
+                            </div>
+                            <div class="dimension-card">
+                                <div class="dimension-title">📚 培训教育</div>
+                                <div class="dimension-content" id="training">
+                                    待生成
+                                </div>
+                            </div>
+                            <div class="dimension-card">
+                                <div class="dimension-title">🛡️ 个人防护</div>
+                                <div class="dimension-content" id="ppe">
+                                    待生成
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-footer">
+                            <span>编制单位：___________</span>
+                            <span>编制日期：___________</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const safetySigns = {
+            warning: [
+                { name: '注意安全', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#fbbf24"/><path d="M50 20L50 55M40 65L50 75L60 65" stroke="#92400e" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>' },
+                { name: '当心触电', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#fbbf24"/><path d="M50 25V75M30 45H70M50 35L60 45L50 55L40 45Z" stroke="#92400e" stroke-width="4" stroke-linecap="round"/></svg>' },
+                { name: '当心火灾', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#fbbf24"/><path d="M50 25C30 45 30 65 50 85C70 65 70 45 50 25M50 40C40 45 35 55 35 65H65C65 55 60 45 50 40Z" stroke="#92400e" stroke-width="4" fill="none"/></svg>' },
+                { name: '当心爆炸', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#fbbf24"/><circle cx="50" cy="50" r="15" fill="#92400e"/><path d="M50 15V5M50 95V85M15 50H5M95 50H85M22 22L15 15M78 78L85 85M22 78L15 85M78 22L85 15" stroke="#92400e" stroke-width="3"/></svg>' },
+                { name: '当心坠落', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#fbbf24"/><path d="M30 75H70L65 25H35L30 75ZM40 60V35H60V60Z" stroke="#92400e" stroke-width="4" fill="none"/></svg>' },
+                { name: '有限空间', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#fbbf24"/><path d="M25 35V65H75V35H25ZM35 45H65V55H35Z" stroke="#92400e" stroke-width="4" fill="none"/></svg>' },
+                { name: '当心机械伤人', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#fbbf24"/><circle cx="50" cy="50" r="20" stroke="#92400e" stroke-width="4"/><path d="M50 30V15M50 70V85M30 50H15M70 50H85" stroke="#92400e" stroke-width="3"/></svg>' },
+                { name: '当心高温表面', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#fbbf24"/><path d="M35 35L65 65M65 35L35 65" stroke="#92400e" stroke-width="4"/><circle cx="50" cy="50" r="10" fill="#92400e"/></svg>' },
+                { name: '注意通风', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#fbbf24"/><path d="M25 50H75M35 40L50 50L35 60M65 40L50 50L65 60" stroke="#92400e" stroke-width="4" stroke-linecap="round"/></svg>' },
+                { name: '当心腐蚀', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#fbbf24"/><path d="M30 70L50 30L70 70M35 55H65" stroke="#92400e" stroke-width="4" stroke-linecap="round"/></svg>' }
+            ],
+            forbidden: [
+                { name: '禁止明火', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#ef4444"/><path d="M50 25C35 40 35 60 50 75C65 60 65 40 50 25M50 35C45 40 42 48 42 55H58C58 48 55 40 50 35Z" stroke="#fff" stroke-width="4" fill="none"/><path d="M20 20L80 80M80 20L20 80" stroke="#fff" stroke-width="6" stroke-linecap="round"/></svg>' },
+                { name: '禁止吸烟', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#ef4444"/><path d="M50 20L50 40M35 25H65M50 40C50 45 55 50 60 50H65C70 50 75 45 75 40V30C75 25 70 20 65 20H55" stroke="#fff" stroke-width="4" stroke-linecap="round"/><path d="M20 20L80 80M80 20L20 80" stroke="#fff" stroke-width="6" stroke-linecap="round"/></svg>' },
+                { name: '禁止进入', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#ef4444"/><path d="M30 30V70H70V30H30ZM40 40H60V60H40V40Z" stroke="#fff" stroke-width="4" fill="none"/><path d="M20 20L80 80M80 20L20 80" stroke="#fff" stroke-width="6" stroke-linecap="round"/></svg>' },
+                { name: '禁止触摸', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#ef4444"/><path d="M35 60L50 45L55 50L65 35M50 55V75" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 20L80 80M80 20L20 80" stroke="#fff" stroke-width="6" stroke-linecap="round"/></svg>' },
+                { name: '禁止合闸', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#ef4444"/><path d="M30 40H70M45 30V50M55 30V50" stroke="#fff" stroke-width="4"/><path d="M20 20L80 80M80 20L20 80" stroke="#fff" stroke-width="6" stroke-linecap="round"/></svg>' },
+                { name: '禁止使用手机', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#ef4444"/><path d="M35 25V75C35 77 37 79 40 79H60C63 79 65 77 65 75V25C65 23 63 21 60 21H40C37 21 35 23 35 25ZM45 35H55V65H45V35Z" stroke="#fff" stroke-width="3" fill="none"/><path d="M20 20L80 80M80 20L20 80" stroke="#fff" stroke-width="6" stroke-linecap="round"/></svg>' },
+                { name: '禁止穿化纤服装', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#ef4444"/><path d="M30 30H70L65 45L75 75H25L35 45Z" stroke="#fff" stroke-width="4" fill="none"/><path d="M20 20L80 80M80 20L20 80" stroke="#fff" stroke-width="6" stroke-linecap="round"/></svg>' },
+                { name: '禁止酒后作业', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#ef4444"/><path d="M35 30L35 50C35 55 38 60 42 63L58 77C62 80 68 78 70 73L75 55C76 52 74 49 71 47L50 35" stroke="#fff" stroke-width="3" fill="none"/><path d="M20 20L80 80M80 20L20 80" stroke="#fff" stroke-width="6" stroke-linecap="round"/></svg>' }
+            ],
+            instruction: [
+                { name: '必须戴安全帽', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#10b981"/><path d="M30 30L30 45C30 48 33 50 36 50H64C67 50 70 48 70 45V30C70 27 68 25 65 25H35C32 25 30 27 30 30ZM35 40H65V45H35V40Z" stroke="#fff" stroke-width="3" fill="none"/></svg>' },
+                { name: '必须戴防护眼镜', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#10b981"/><path d="M25 45C25 45 20 50 25 55C30 60 40 58 50 58C60 58 70 60 75 55C80 50 75 45 75 45H25Z" stroke="#fff" stroke-width="3" fill="none"/><circle cx="35" cy="50" r="8" stroke="#fff" stroke-width="2"/><circle cx="65" cy="50" r="8" stroke="#fff" stroke-width="2"/></svg>' },
+                { name: '必须戴防护手套', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#10b981"/><path d="M30 70C25 70 20 65 20 60V45C20 35 30 30 40 30H60C70 30 80 35 80 45V60C80 65 75 70 70 70H30ZM35 40H65V55H35V40Z" stroke="#fff" stroke-width="3" fill="none"/></svg>' },
+                { name: '必须穿防护服', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#10b981"/><path d="M30 35V70C30 73 33 75 36 75H64C67 75 70 73 70 70V35C70 32 68 30 65 30H35C32 30 30 32 30 35ZM35 45H65V65H35V45Z" stroke="#fff" stroke-width="3" fill="none"/></svg>' },
+                { name: '必须戴防毒面具', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#10b981"/><path d="M30 40C25 40 20 45 20 50V60C20 65 25 70 30 70H70C75 70 80 65 80 60V50C80 45 75 40 70 40H30ZM35 50H65V60H35V50Z" stroke="#fff" stroke-width="3" fill="none"/><path d="M25 55H15M75 55H85" stroke="#fff" stroke-width="2"/></svg>' },
+                { name: '必须穿防护鞋', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#10b981"/><path d="M25 60V75C25 78 28 80 31 80H69C72 80 75 78 75 75V60C75 55 70 50 60 50H40C30 50 25 55 25 60ZM35 65H65V75H35V65Z" stroke="#fff" stroke-width="3" fill="none"/></svg>' },
+                { name: '必须系安全带', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#10b981"/><path d="M30 30V60C30 65 35 70 40 70H60C65 70 70 65 70 60V30C70 27 67 25 65 25H35C32 25 30 27 30 30ZM40 40H60V55H40V40Z" stroke="#fff" stroke-width="3" fill="none"/><path d="M50 30V20" stroke="#fff" stroke-width="3"/></svg>' },
+                { name: '必须持证上岗', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#10b981"/><path d="M30 30V70H70V30H30ZM35 40H65V60H35V40Z" stroke="#fff" stroke-width="3" fill="none"/><path d="M40 45H60M40 52H55" stroke="#fff" stroke-width="2"/></svg>' },
+                { name: '必须通风', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#10b981"/><path d="M25 50H75M35 40L50 50L35 60M65 40L50 50L65 60" stroke="#fff" stroke-width="4" stroke-linecap="round"/></svg>' },
+                { name: '必须检查', svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#10b981"/><path d="M35 50L45 60L65 40" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>' }
+            ]
+        };
+
+        const riskTemplates = {
+            '有限空间作业': {
+                description: '作业场所为密闭或半密闭空间，可能存在有毒有害气体、缺氧、易燃易爆物质等危险，易导致中毒、窒息、爆炸等事故。',
+                level: '重大风险（红色）',
+                engineering: '1. 安装强制通风设备\n2. 设置气体检测装置\n3. 配置应急排风系统\n4. 安装隔离阀与盲板',
+                management: '1. 执行作业许可证制度\n2. 指定专职监护人员\n3. 实施气体检测流程\n4. 制定应急预案并演练',
+                training: '1. 有限空间作业安全培训\n2. 应急救援知识培训\n3. 气体检测设备使用培训\n4. 个人防护装备使用培训',
+                ppe: '1. 正压式呼吸器\n2. 安全绳与安全带\n3. 防静电工作服\n4. 防爆照明设备',
+                signs: { warning: 5, forbidden: 2, instruction: 4 }
+            },
+            '高处作业': {
+                description: '在坠落高度基准面2米及以上位置进行作业，存在高处坠落风险，可能导致人员伤亡。',
+                level: '较大风险（橙色）',
+                engineering: '1. 安装安全防护栏杆\n2. 设置安全网\n3. 搭建脚手架\n4. 安装防坠落装置',
+                management: '1. 执行高处作业许可证\n2. 配备专职监护人\n3. 定期检查作业设施\n4. 恶劣天气禁止作业',
+                training: '1. 高处作业安全培训\n2. 脚手架搭设培训\n3. 应急救援培训\n4. 安全防护装备使用培训',
+                ppe: '1. 安全带与安全绳\n2. 安全帽\n3. 防滑鞋\n4. 工具袋',
+                signs: { warning: 4, forbidden: 2, instruction: 6 }
+            },
+            '动火作业': {
+                description: '在禁火区域进行焊接、切割、打磨等产生明火或火花的作业，易引发火灾、爆炸事故。',
+                level: '重大风险（红色）',
+                engineering: '1. 安装防火隔离设施\n2. 设置灭火器材\n3. 配备防火毯\n4. 安装可燃气体检测装置',
+                management: '1. 执行动火作业许可证\n2. 清理作业区域可燃物\n3. 指定动火监护人\n4. 作业后现场检查确认',
+                training: '1. 动火作业安全培训\n2. 灭火器使用培训\n3. 应急灭火演练\n4. 气体检测培训',
+                ppe: '1. 防火服\n2. 防护眼镜\n3. 焊接面罩\n4. 耐高温手套',
+                signs: { warning: 2, forbidden: 0, instruction: 5 }
+            },
+            '临时用电': {
+                description: '施工现场临时用电线路，存在触电、短路、火灾等安全风险。',
+                level: '较大风险（橙色）',
+                engineering: '1. 使用合格电缆\n2. 安装漏电保护器\n3. 设置配电箱防雨罩\n4. 架空或穿管敷设线路',
+                management: '1. 执行临时用电审批\n2. 定期检查线路设备\n3. 电工持证上岗\n4. 作业完毕断电上锁',
+                training: '1. 电工安全培训\n2. 触电急救培训\n3. 漏电保护器使用培训\n4. 临时用电规范培训',
+                ppe: '1. 绝缘手套\n2. 绝缘靴\n3. 验电笔\n4. 安全帽',
+                signs: { warning: 1, forbidden: 4, instruction: 2 }
+            },
+            '吊装作业': {
+                description: '使用起重设备进行重物吊装，存在重物坠落、设备倾覆等风险，易造成人员伤亡和财产损失。',
+                level: '较大风险（橙色）',
+                engineering: '1. 检查起重机具完好性\n2. 设置吊装区域警示\n3. 安装风速仪\n4. 配备溜绳控制',
+                management: '1. 执行吊装作业许可证\n2. 指定指挥人员\n3. 划定警戒区域\n4. 恶劣天气禁止作业',
+                training: '1. 起重作业安全培训\n2. 指挥信号培训\n3. 应急预案培训\n4. 设备检查培训',
+                ppe: '1. 安全帽\n2. 反光背心\n3. 防滑鞋\n4. 防护手套',
+                signs: { warning: 0, forbidden: 2, instruction: 1 }
+            },
+            '焊接作业': {
+                description: '焊接过程产生高温、强光、有害气体和焊接烟尘，存在烫伤、弧光伤害、中毒等风险。',
+                level: '一般风险（黄色）',
+                engineering: '1. 安装局部通风装置\n2. 设置遮光挡板\n3. 配备排烟系统\n4. 隔离焊接区域',
+                management: '1. 焊接作业审批制度\n2. 作业前安全检查\n3. 指定现场监护人\n4. 作业后清理现场',
+                training: '1. 焊接安全操作培训\n2. 职业病防护培训\n3. 应急处理培训\n4. 设备维护培训',
+                ppe: '1. 焊接面罩\n2. 焊接手套\n3. 焊接防护服\n4. 防尘口罩',
+                signs: { warning: 2, forbidden: 0, instruction: 2 }
+            },
+            '冲压作业': {
+                description: '操作冲压设备加工工件，存在机械伤害风险，易发生手指、手部等部位的伤害事故。',
+                level: '较大风险（橙色）',
+                engineering: '1. 安装安全防护装置\n2. 设置双手操作按钮\n3. 配备光电保护装置\n4. 安装紧急停止按钮',
+                management: '1. 设备定期维护保养\n2. 作业前设备检查\n3. 制定操作规程\n4. 禁止违章操作',
+                training: '1. 设备操作培训\n2. 安全防护知识培训\n3. 应急救援培训\n4. 操作规程培训',
+                ppe: '1. 防护手套\n2. 防护眼镜\n3. 安全帽\n4. 防滑鞋',
+                signs: { warning: 6, forbidden: 3, instruction: 2 }
+            },
+            '喷漆作业': {
+                description: '喷涂作业产生挥发性有机化合物(VOCs)和漆雾，存在中毒、火灾、职业病等风险。',
+                level: '较大风险（橙色）',
+                engineering: '1. 安装防爆通风系统\n2. 设置废气处理装置\n3. 配备防火防爆设施\n4. 安装可燃气体报警装置',
+                management: '1. 执行喷漆作业许可\n2. 控制作业环境温度\n3. 禁止火源进入\n4. 作业后通风换气',
+                training: '1. 喷漆安全操作培训\n2. 职业病防护培训\n3. 防爆知识培训\n4. 应急处理培训',
+                ppe: '1. 防毒面具\n2. 防护服\n3. 防护手套\n4. 防护眼镜',
+                signs: { warning: 2, forbidden: 1, instruction: 4 }
+            }
+        };
+
+        function getSignForJob(jobName) {
+            const keywords = {
+                '有限空间': { warning: 5, forbidden: 2, instruction: 4 },
+                '高处': { warning: 4, forbidden: 2, instruction: 6 },
+                '动火': { warning: 2, forbidden: 0, instruction: 5 },
+                '焊接': { warning: 2, forbidden: 0, instruction: 2 },
+                '用电': { warning: 1, forbidden: 4, instruction: 2 },
+                '吊装': { warning: 0, forbidden: 2, instruction: 1 },
+                '冲压': { warning: 6, forbidden: 3, instruction: 2 },
+                '喷漆': { warning: 2, forbidden: 1, instruction: 4 },
+                '高温': { warning: 7, forbidden: 2, instruction: 5 },
+                '腐蚀': { warning: 9, forbidden: 2, instruction: 3 },
+                '机械': { warning: 6, forbidden: 3, instruction: 1 }
+            };
+            
+            for (const [keyword, indices] of Object.entries(keywords)) {
+                if (jobName.includes(keyword)) {
+                    return indices;
+                }
+            }
+            return { warning: 0, forbidden: 0, instruction: 0 };
+        }
+
+        function generateMockAIResponse(jobName) {
+            if (riskTemplates[jobName]) {
+                return riskTemplates[jobName];
+            }
+            
+            const keywords = jobName.includes('高处') ? '高处' : 
+                           jobName.includes('动火') ? '动火' :
+                           jobName.includes('焊接') ? '焊接' :
+                           jobName.includes('有限空间') ? '有限空间' : '通用';
+            
+            return {
+                description: `${jobName}作业存在多种安全风险，包括机械伤害、坠落、触电等潜在危险，需采取综合防控措施。`,
+                level: keywords === '有限空间' || keywords === '动火' ? '重大风险（红色）' : '较大风险（橙色）',
+                engineering: `1. 安装安全防护设施\n2. 设置警示标识\n3. 配备监测设备\n4. 实施隔离措施`,
+                management: `1. 执行作业许可制度\n2. 指定专职监护人员\n3. 定期安全检查\n4. 应急预案演练`,
+                training: `1. ${jobName}安全操作培训\n2. 应急救援知识培训\n3. 设备使用培训\n4. 防护装备培训`,
+                ppe: `1. 安全帽\n2. 防护手套\n3. 防护眼镜\n4. 防护服`,
+                signs: getSignForJob(jobName)
+            };
+        }
+
+        function updateCardContent(data) {
+            document.getElementById('riskDescription').textContent = data.description;
+            document.getElementById('riskLevel').textContent = data.level;
+            document.getElementById('engineering').textContent = data.engineering;
+            document.getElementById('management').textContent = data.management;
+            document.getElementById('training').textContent = data.training;
+            document.getElementById('ppe').textContent = data.ppe;
+            
+            const signIndices = data.signs || getSignForJob(document.getElementById('jobName').value);
+            const iconsContainer = document.getElementById('safetyIcons');
+            
+            const warningSign = safetySigns.warning[signIndices.warning];
+            const forbiddenSign = safetySigns.forbidden[signIndices.forbidden];
+            const instructionSign = safetySigns.instruction[signIndices.instruction];
+            
+            iconsContainer.innerHTML = `
+                <div class="icon-item">
+                    <div class="icon-box">${warningSign.svg}</div>
+                    <div class="icon-label">${warningSign.name}</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-box">${forbiddenSign.svg}</div>
+                    <div class="icon-label">${forbiddenSign.name}</div>
+                </div>
+                <div class="icon-item">
+                    <div class="icon-box">${instructionSign.svg}</div>
+                    <div class="icon-label">${instructionSign.name}</div>
+                </div>
+            `;
+        }
+
+        document.getElementById('generateBtn').addEventListener('click', async () => {
+            const jobName = document.getElementById('jobName').value.trim();
+            if (!jobName) {
+                alert('请输入岗位名称');
+                return;
+            }
+            
+            const cardContainer = document.getElementById('cardContainer');
+            cardContainer.innerHTML = '<div class="loading">AI正在分析评估中...</div>';
+            
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            const aiResponse = generateMockAIResponse(jobName);
+            cardContainer.innerHTML = document.getElementById('riskCard').outerHTML;
+            
+            updateCardContent(aiResponse);
+        });
+
+        document.getElementById('logoFile').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    document.getElementById('logoArea').innerHTML = `<img src="${event.target.result}" alt="Logo">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('logoUpload').addEventListener('click', () => {
+            document.getElementById('logoFile').click();
+        });
+
+        document.querySelectorAll('.size-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.size-option').forEach(opt => opt.classList.remove('active'));
+                option.classList.add('active');
+                
+                const size = option.dataset.size;
+                const scale = size === 'A2' ? 1.5 : size === 'A3' ? 1.25 : 1;
+                document.getElementById('cardContainer').style.transform = `scale(${scale})`;
+                document.getElementById('cardContainer').style.transformOrigin = 'top center';
+            });
+        });
+
+        document.getElementById('exportPngBtn').addEventListener('click', async () => {
+            const riskCard = document.getElementById('riskCard');
+            const scale = 2;
+            
+            const canvas = await html2canvas(riskCard, {
+                scale: scale,
+                useCORS: true,
+                backgroundColor: null
+            });
+            
+            const link = document.createElement('a');
+            link.download = `风险点告知卡_${document.getElementById('jobName').value}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+
+        document.getElementById('exportPptBtn').addEventListener('click', async () => {
+            const jobName = document.getElementById('jobName').value || '风险点';
+            const size = document.querySelector('.size-option.active').dataset.size;
+            
+            const dimensions = {
+                A4: { width: 793.7, height: 1122.5 },
+                A3: { width: 1122.5, height: 1587.4 },
+                A2: { width: 1587.4, height: 2245.0 }
+            };
+            
+            const dim = dimensions[size];
+            
+            try {
+                const workbook = await xlsxPopulate.fromBlankAsync();
+                const sheet = workbook.sheet(0);
+                sheet.name('风险告知卡');
+                
+                sheet.range('A1').value('风险点告知卡')
+                    .style({ 
+                        fontSize: 24, 
+                        fontWeight: 'bold', 
+                        fontColor: '#FFFFFF',
+                        backgroundColor: '#1e3a5f',
+                        horizontalAlignment: 'center',
+                        verticalAlignment: 'center'
+                    });
+                
+                sheet.range('A1:H3').merge();
+                sheet.row(1).height(60);
+                
+                sheet.range('A4').value('岗位名称：' + jobName)
+                    .style({ fontSize: 14, fontColor: '#1e3a5f', fontWeight: 'bold' });
+                
+                sheet.range('A5').value('⚠️ 风险描述')
+                    .style({ fontSize: 12, fontColor: '#2563eb', fontWeight: 'bold' });
+                sheet.range('A6:H8').merge().value(document.getElementById('riskDescription').textContent)
+                    .style({ fontSize: 11, fontColor: '#333', wrapText: true });
+                
+                sheet.range('A9').value('🎯 风险等级')
+                    .style({ fontSize: 12, fontColor: '#2563eb', fontWeight: 'bold' });
+                sheet.range('A10:H11').merge().value(document.getElementById('riskLevel').textContent)
+                    .style({ fontSize: 11, fontColor: '#333', wrapText: true });
+                
+                sheet.range('A12').value('🏗️ 工程措施')
+                    .style({ fontSize: 12, fontColor: '#f59e0b', fontWeight: 'bold' });
+                sheet.range('A13:D16').merge().value(document.getElementById('engineering').textContent)
+                    .style({ fontSize: 10, fontColor: '#333', wrapText: true });
+                
+                sheet.range('E12').value('📋 管理措施')
+                    .style({ fontSize: 12, fontColor: '#10b981', fontWeight: 'bold' });
+                sheet.range('E13:H16').merge().value(document.getElementById('management').textContent)
+                    .style({ fontSize: 10, fontColor: '#333', wrapText: true });
+                
+                sheet.range('A17').value('📚 培训教育')
+                    .style({ fontSize: 12, fontColor: '#8b5cf6', fontWeight: 'bold' });
+                sheet.range('A18:D21').merge().value(document.getElementById('training').textContent)
+                    .style({ fontSize: 10, fontColor: '#333', wrapText: true });
+                
+                sheet.range('E17').value('🛡️ 个人防护')
+                    .style({ fontSize: 12, fontColor: '#ef4444', fontWeight: 'bold' });
+                sheet.range('E18:H21').merge().value(document.getElementById('ppe').textContent)
+                    .style({ fontSize: 10, fontColor: '#333', wrapText: true });
+                
+                sheet.range('A22:H22').merge().value('编制单位：___________                          编制日期：___________')
+                    .style({ fontSize: 10, fontColor: '#666', horizontalAlignment: 'center' });
+                
+                sheet.column('A').width(30);
+                sheet.column('B').width(30);
+                sheet.column('C').width(30);
+                sheet.column('D').width(30);
+                sheet.column('E').width(30);
+                sheet.column('F').width(30);
+                sheet.column('G').width(30);
+                sheet.column('H').width(30);
+                
+                const base64 = await workbook.outputAsync('base64');
+                const link = document.createElement('a');
+                link.download = `风险点告知卡_${jobName}.xlsx`;
+                link.href = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${base64}`;
+                link.click();
+                
+            } catch (error) {
+                console.error('Export error:', error);
+                alert('导出PPTX时出现错误，请重试');
+            }
+        });
+
+        document.getElementById('manualContent').addEventListener('input', () => {
+            const content = document.getElementById('manualContent').value;
+            if (content.trim()) {
+                const parts = content.split('---');
+                if (parts.length >= 4) {
+                    document.getElementById('engineering').textContent = parts[0].trim();
+                    document.getElementById('management').textContent = parts[1].trim();
+                    document.getElementById('training').textContent = parts[2].trim();
+                    document.getElementById('ppe').textContent = parts[3].trim();
+                }
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateCardContent(riskTemplates['有限空间作业']);
+        });
+    </script>
+</body>
+</html>
